@@ -1,0 +1,8 @@
+# Python dependencies not available through rosdep.
+# Tested with ROS 2 Humble, Python 3.10.
+torch>=1.12
+torchvision>=0.13
+transformers==4.40.2   # Depth Anything V1 / DPT; newer 4.x versions need a newer torch
+numpy<2                # ROS 2 Humble's cv_bridge/rclpy are built against NumPy 1.x
+opencv-python-headless # headless avoids the OpenCV/PyQt5 Qt plugin clash
+PyQt5>=5.15
