@@ -1,0 +1,12 @@
+Source: ros-humble-mono-depth-viewer
+Section: misc
+Priority: optional
+Maintainer: "Divagar" <n.divagar18@gmail.com>
+Build-Depends: debhelper (>= 9.0.0), python3-pytest <!nocheck>, ros-humble-ros-workspace, python3-all, python3-setuptools, dh-python
+Homepage: https://github.com/divagarn/mono_depth_ros2
+Standards-Version: 3.9.2
+
+Package: ros-humble-mono-depth-viewer
+Architecture: any
+Depends: ${python3:Depends}, ${misc:Depends}, pyqt5-dev, python3-numpy, python3-opencv, python3-pyqt5, python3-pyqt5.qtsvg, python3-sip-dev, ros-humble-rclpy, ros-humble-sensor-msgs, ros-humble-ros-workspace
+Description: Qt viewer that runs transformer-based monocular depth estimation on image topics stored in ROS 2 bags.
