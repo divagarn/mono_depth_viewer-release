@@ -1,0 +1,12 @@
+ros-humble-mono-depth-viewer (0.1.1-2jammy) jammy; urgency=high
+
+  * Initial release.
+  * Qt viewer that reads sensor_msgs/Image and CompressedImage topics from ROS 2 sqlite3 (.db3) bags.
+  * Monocular depth estimation with transformer models (Depth Anything V1 Small/Base/Large, DPT-Hybrid MiDaS).
+  * Playback, frame scrubbing, frame skipping, colormap and input size selection.
+  * Save frames (PNG + raw .npy) and export side-by-side MP4 videos.
+  * Contributors: Divagar
+
+ -- "Divagar" <n.divagar18@gmail.com>  Thu, 22 Oct 2026 18:30:00 -0000
+
+
