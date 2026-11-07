@@ -4,12 +4,8 @@ import numpy as np
 import torch
 from transformers import AutoImageProcessor, AutoModelForDepthEstimation
 
-MODELS = {
-    "Depth Anything V1 Small (fast)": ("LiheYoung/depth-anything-small-hf", 14),
-    "Depth Anything V1 Base": ("LiheYoung/depth-anything-base-hf", 14),
-    "Depth Anything V1 Large (best, slow)": ("LiheYoung/depth-anything-large-hf", 14),
-    "DPT Hybrid MiDaS": ("Intel/dpt-hybrid-midas", 32),
-}
+from mono_depth_viewer.models import MODEL_ALIASES, MODELS  # noqa: F401  (re-exported)
+
 COLORMAPS = {"Turbo": cv2.COLORMAP_TURBO, "Inferno": cv2.COLORMAP_INFERNO,
              "Magma": cv2.COLORMAP_MAGMA, "Gray": None}
 

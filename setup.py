@@ -6,7 +6,7 @@ package_name = "mono_depth_viewer"
 
 setup(
     name=package_name,
-    version="0.1.1",
+    version="0.2.0",
     packages=find_packages(exclude=["test"]),
     data_files=[
         ("share/ament_index/resource_index/packages", ["resource/" + package_name]),
@@ -20,5 +20,5 @@ setup(
     description="Monocular depth estimation viewer for ROS 2 bags (transformer based).",
     license="Apache-2.0",
     tests_require=["pytest"],
-    entry_points={"console_scripts": ["viewer = mono_depth_viewer.viewer:main"]},
+    entry_points={"console_scripts": ["viewer = mono_depth_viewer.main:main"]},
 )
