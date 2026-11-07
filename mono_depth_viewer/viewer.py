@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Monocular depth estimation viewer for ROS 2 bag files (transformer based).
 
-Run:  ros2 run mono_depth_viewer viewer [bag_folder_or_db3]
+Debug GUI, started with:  ros2 run mono_depth_viewer viewer --debug [bag_folder_or_db3] [--pointcloud ...]
 """
 import os
 import sys
@@ -19,7 +19,8 @@ QtCore.QCoreApplication.setLibraryPaths(
     [QtCore.QLibraryInfo.location(QtCore.QLibraryInfo.PluginsPath)])
 
 from mono_depth_viewer.bag_reader import BagReader
-from mono_depth_viewer.depth_model import COLORMAPS, MODELS, DepthEstimator
+from mono_depth_viewer.depth_model import COLORMAPS, MODEL_ALIASES, MODELS, DepthEstimator
+from mono_depth_viewer.pointcloud import PointCloudPublisher
 
 DEFAULT_TOPIC = "/camera/image_raw"
 
@@ -63,8 +64,9 @@ class Worker(QtCore.QThread):
     def __init__(self):
         super().__init__()
         self.cv = threading.Condition()
-        self.jobs = []          # ("load", name) | ("frame", k, rgb, size) | ("export", fn)
+        self.jobs = []          # ("load", name) | ("frame", k, rgb, size, meta) | ("export", fn)
         self.est = None
+        self.pc = None          # optional PointCloudPublisher
         self.cancel_export = False
         self._quit = False
 
@@ -96,10 +98,13 @@ class Worker(QtCore.QThread):
                     self.est = DepthEstimator(job[1])
                     self.loaded.emit(f"{job[1]} on {self.est.device}")
                 elif job[0] == "frame" and self.est:
-                    _, k, rgb, size = job
+                    _, k, rgb, size, meta = job
                     t = time.perf_counter()
                     depth = self.est.predict(rgb, size)
-                    self.result.emit(k, rgb, depth, (time.perf_counter() - t) * 1000)
+                    ms = (time.perf_counter() - t) * 1000
+                    if self.pc:
+                        self.pc.publish(rgb, depth, **meta)
+                    self.result.emit(k, rgb, depth, ms)
                 elif job[0] == "export" and self.est:
                     self.exported.emit(job[1](self))
             except Exception as e:  # keep the thread alive; report in the UI
@@ -107,8 +112,9 @@ class Worker(QtCore.QThread):
 
 
 class MainWindow(QtWidgets.QMainWindow):
-    def __init__(self):
+    def __init__(self, args=None):
         super().__init__()
+        self.autoplay = bool(args and args.play)
         self.setWindowTitle("Monocular Depth from ROS Bag")
         self.resize(1400, 760)
         self.reader = None
@@ -120,6 +126,10 @@ class MainWindow(QtWidgets.QMainWindow):
         self.model_ready = False
 
         self.worker = Worker()
+        if args and args.pointcloud:
+            self.worker.pc = PointCloudPublisher(
+                args.pc_topic, args.pc_frame, args.hfov, args.near, args.far, args.pc_stride, args.pc_stamp,
+                axes=args.pc_axes, pitch=args.pitch, cam_height=args.cam_height, auto_level=args.auto_level)
         self.worker.loaded.connect(self.on_loaded)
         self.worker.failed.connect(self.on_failed)
         self.worker.result.connect(self.on_result)
@@ -128,6 +138,9 @@ class MainWindow(QtWidgets.QMainWindow):
         self.worker.start()
 
         self._build_ui()
+        if args:
+            self.cb_model.setCurrentText(MODEL_ALIASES[args.model])
+            self.cb_size.setCurrentText(str(args.input_size))
         self.load_model()
 
     # ---------- UI ----------
@@ -267,7 +280,9 @@ class MainWindow(QtWidgets.QMainWindow):
             return
         self.busy = True
         self.pending = None
-        self.worker.submit(("frame", k, self.reader.frame(k), int(self.cb_size.currentText())))
+        rgb = self.reader.frame(k)
+        meta = {"stamp_ns": int(self.reader.timestamp(k) * 1e9), "frame_id": self.reader.last_frame_id}
+        self.worker.submit(("frame", k, rgb, int(self.cb_size.currentText()), meta))
 
     def on_result(self, k, rgb, depth, ms):
         self.busy = False
@@ -278,7 +293,10 @@ class MainWindow(QtWidgets.QMainWindow):
         self.slider.blockSignals(True)
         self.slider.setValue(k)
         self.slider.blockSignals(False)
-        if self.pending is not None:
+        if self.autoplay:
+            self.autoplay = False
+            self.toggle_play()
+        elif self.pending is not None:
             self.request(self.pending)
         elif self.playing:
             nxt = k + self.sp_stride.value()
@@ -372,17 +390,16 @@ class MainWindow(QtWidgets.QMainWindow):
 
     def closeEvent(self, e):
         self.worker.stop()
+        if self.worker.pc:
+            self.worker.pc.shutdown()
         super().closeEvent(e)
 
 
-def main():
-    app = QtWidgets.QApplication(sys.argv)
-    w = MainWindow()
+def run(args, rest):
+    """Open the debug GUI. `args` comes from mono_depth_viewer.main, `rest` are leftover (Qt) arguments."""
+    app = QtWidgets.QApplication([sys.argv[0]] + rest)
+    w = MainWindow(args)
     w.show()
-    if len(sys.argv) > 1:
-        QtCore.QTimer.singleShot(0, lambda: w.open_bag(sys.argv[1]))
+    if args.bag:
+        QtCore.QTimer.singleShot(0, lambda: w.open_bag(args.bag))
     sys.exit(app.exec_())
-
-
-if __name__ == "__main__":
-    main()
