@@ -56,6 +56,7 @@ class BagReader:
                 if typ in IMAGE_TYPES:
                     self.topics[name] = (typ, IMAGE_TYPES[typ])
         self._index = []  # [(db_idx, message_id, timestamp_ns)]
+        self.last_frame_id = ""  # header.frame_id of the last decoded frame
 
     def select_topic(self, topic):
         """Index all messages of `topic`; returns the frame count."""
@@ -78,7 +79,9 @@ class BagReader:
     def frame(self, k):
         i, mid, _ = self._index[k]
         (data,) = self.dbs[i].execute("SELECT data FROM messages WHERE id = ?", (mid,)).fetchone()
-        return image_to_rgb(deserialize_message(data, self.cls))
+        msg = deserialize_message(data, self.cls)
+        self.last_frame_id = msg.header.frame_id
+        return image_to_rgb(msg)
 
     def close(self):
         for db in self.dbs:
